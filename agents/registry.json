@@ -1,0 +1,160 @@
+{
+  "agents": {
+    "swarms": {
+      "upstream": "kyegomez/swarms",
+      "description": "Multi-framework agent orchestration platform",
+      "category": "orchestration",
+      "language": "python",
+      "status": "active",
+      "capabilities": [
+        "multi-agent",
+        "workflow",
+        "orchestration"
+      ],
+      "last_sync": "2025-08-14T00:54:55.368212",
+      "fork_status": "completed"
+    },
+    "dify": {
+      "upstream": "langgenius/dify",
+      "description": "Production-ready agentic workflow development platform",
+      "category": "platform",
+      "language": "python",
+      "status": "active",
+      "capabilities": [
+        "workflow",
+        "production",
+        "enterprise"
+      ],
+      "last_sync": "2025-08-14T00:55:11.380210",
+      "fork_status": "completed"
+    },
+    "eliza": {
+      "upstream": "ai16z/eliza",
+      "description": "Autonomous agents for everyone",
+      "category": "framework",
+      "language": "typescript",
+      "status": "active",
+      "capabilities": [
+        "autonomous",
+        "accessible",
+        "multi-platform"
+      ],
+      "last_sync": "2025-08-14T00:56:02.272836",
+      "fork_status": "completed"
+    },
+    "TinyTroupe": {
+      "upstream": "microsoft/TinyTroupe",
+      "description": "LLM-powered multiagent persona simulation",
+      "category": "simulation",
+      "language": "python",
+      "status": "active",
+      "capabilities": [
+        "persona",
+        "simulation",
+        "business-insights"
+      ],
+      "last_sync": "2025-08-14T00:56:17.868751",
+      "fork_status": "completed"
+    },
+    "GPTSwarm": {
+      "upstream": "metauto-ai/GPTSwarm",
+      "description": "Graph agentic framework with RL and prompt optimization",
+      "category": "research",
+      "language": "python",
+      "status": "active",
+      "capabilities": [
+        "graph-agents",
+        "reinforcement-learning",
+        "optimization"
+      ],
+      "last_sync": "2025-08-14T00:56:24.104853",
+      "fork_status": "completed"
+    },
+    "PraisonAI": {
+      "upstream": "MervinPraison/PraisonAI",
+      "description": "Production-ready multi-agent framework (low-code)",
+      "category": "platform",
+      "language": "python",
+      "status": "active",
+      "capabilities": [
+        "low-code",
+        "multi-agent",
+        "production"
+      ],
+      "last_sync": "2025-08-14T00:56:30.418533",
+      "fork_status": "completed"
+    },
+    "cognify": {
+      "upstream": "topoteretes/cognify",
+      "description": "Multi-faceted AI agent workflow autotuning",
+      "category": "optimization",
+      "language": "python",
+      "status": "active",
+      "capabilities": [
+        "autotuning",
+        "langchain",
+        "langgraph",
+        "dspy"
+      ],
+      "last_sync": null,
+      "fork_status": "pending"
+    },
+    "agentlaboratory": {
+      "upstream": "Future-House/agent-laboratory",
+      "description": "End-to-end autonomous research workflow",
+      "category": "research",
+      "language": "python",
+      "status": "active",
+      "capabilities": [
+        "research",
+        "autonomous",
+        "workflow"
+      ],
+      "last_sync": null,
+      "fork_status": "pending"
+    },
+    "storm": {
+      "upstream": "stanford-oval/storm",
+      "description": "LLM-powered knowledge curation with citations",
+      "category": "research",
+      "language": "python",
+      "status": "active",
+      "capabilities": [
+        "knowledge-curation",
+        "citations",
+        "research"
+      ],
+      "last_sync": "2025-08-14T00:56:33.758245",
+      "fork_status": "completed"
+    },
+    "botasaurus": {
+      "upstream": "omkarcloud/botasaurus",
+      "description": "All-in-one undefeatable scraper framework",
+      "category": "data",
+      "language": "python",
+      "status": "active",
+      "capabilities": [
+        "scraping",
+        "undetectable",
+        "data-collection"
+      ],
+      "last_sync": "2025-08-14T00:56:44.090891",
+      "fork_status": "completed"
+    }
+  },
+  "categories": {
+    "orchestration": "Agent coordination and workflow management",
+    "platform": "Production-ready agent platforms",
+    "framework": "Core agent development frameworks",
+    "simulation": "Agent simulation and persona modeling",
+    "research": "Research-focused agent tools",
+    "optimization": "Agent performance and workflow optimization",
+    "data": "Data collection and processing agents"
+  },
+  "metadata": {
+    "last_updated": "2025-08-14T00:56:44.090924",
+    "total_agents": 10,
+    "active_agents": 10,
+    "pending_forks": 10
+  }
+}
