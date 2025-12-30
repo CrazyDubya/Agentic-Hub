@@ -11,6 +11,8 @@ Key Components:
 - Marketplace: Agent and skill discovery
 - Message Bus: Inter-agent communication
 - LLM Harness: Core orchestration layer
+- Self-Evaluation: Flywheel for continuous improvement
+- Q&A Generation: Training data creation
 
 Example usage:
 
@@ -32,6 +34,17 @@ Example usage:
     )
 
     print(result["final_response"])
+
+CLI usage:
+
+    # Interactive mode
+    python -m harness interactive
+
+    # Run a task
+    python -m harness run "Analyze the codebase"
+
+    # Start API server
+    python -m harness server --port 8080
 """
 
 __version__ = "0.1.0"
@@ -39,9 +52,12 @@ __version__ = "0.1.0"
 from .core.llm_harness import (
     UniversalLLMHarness,
     HarnessMode,
+    LLMType,
     LLMBackend,
+    MockLLMBackend,
     AgentState,
     ExecutionContext,
+    CommandExecutor,
     create_harness
 )
 
@@ -49,14 +65,17 @@ from .core.command_protocol import (
     Command,
     CommandResult,
     CommandType,
-    UniversalCommandParser
+    UniversalCommandParser,
+    generate_help_text
 )
 
 from .sandbox.sandbox_manager import (
     SandboxManager,
     Sandbox,
     SandboxType,
-    ResourceLimits
+    SandboxSnapshot,
+    ResourceLimits,
+    IsolationLevel
 )
 
 from .skills.skill_system import (
@@ -64,6 +83,10 @@ from .skills.skill_system import (
     Skill,
     SkillResult,
     SkillMetadata,
+    SkillParameter,
+    SkillOutput,
+    SkillType,
+    SkillCategory,
     PythonSkill,
     PromptSkill,
     CompositeSkill
@@ -73,23 +96,32 @@ from .marketplace.registry import (
     AgentDirectory,
     Marketplace,
     AgentProfile,
-    MarketplaceAsset
+    AgentCapabilityLevel,
+    MarketplaceAsset,
+    AssetType
 )
 
 from .communication.message_bus import (
     MessageBus,
     Message,
     MessageType,
-    AgentMailbox
+    MessagePriority,
+    AgentMailbox,
+    Conversation,
+    TextMessageParser,
+    format_inbox_for_llm
 )
 
 __all__ = [
     # Core harness
     "UniversalLLMHarness",
     "HarnessMode",
+    "LLMType",
     "LLMBackend",
+    "MockLLMBackend",
     "AgentState",
     "ExecutionContext",
+    "CommandExecutor",
     "create_harness",
 
     # Commands
@@ -97,18 +129,25 @@ __all__ = [
     "CommandResult",
     "CommandType",
     "UniversalCommandParser",
+    "generate_help_text",
 
     # Sandbox
     "SandboxManager",
     "Sandbox",
     "SandboxType",
+    "SandboxSnapshot",
     "ResourceLimits",
+    "IsolationLevel",
 
     # Skills
     "SkillRegistry",
     "Skill",
     "SkillResult",
     "SkillMetadata",
+    "SkillParameter",
+    "SkillOutput",
+    "SkillType",
+    "SkillCategory",
     "PythonSkill",
     "PromptSkill",
     "CompositeSkill",
@@ -117,11 +156,17 @@ __all__ = [
     "AgentDirectory",
     "Marketplace",
     "AgentProfile",
+    "AgentCapabilityLevel",
     "MarketplaceAsset",
+    "AssetType",
 
     # Communication
     "MessageBus",
     "Message",
     "MessageType",
+    "MessagePriority",
     "AgentMailbox",
+    "Conversation",
+    "TextMessageParser",
+    "format_inbox_for_llm",
 ]
