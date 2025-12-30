@@ -1,0 +1,17 @@
+#!/usr/bin/env python3
+"""
+Universal LLM Agent Harness - Executable Entry Point
+
+This script provides the 'harness' command for the CLI.
+"""
+
+import sys
+from pathlib import Path
+
+# Add the parent directory to the path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from harness.cli import main
+
+if __name__ == "__main__":
+    main()
