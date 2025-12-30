@@ -757,7 +757,8 @@ Examples:
         cli.interactive_mode(args.agent)
 
     elif args.command == "run":
-        cli.initialize(mock=args.mock)
+        mode = HarnessMode.AUTONOMOUS if args.autonomous else HarnessMode.INTERACTIVE
+        cli.initialize(mode, mock=args.mock)
         cli.run_task(args.task, args.agent, args.autonomous)
 
     elif args.command == "server":
