@@ -372,6 +372,23 @@ class OllamaBackend(BaseLLMBackend):
                 "stream": True,
             }
 
+            # Add tools if provided and model supports them
+            if tools and self._supports_tools_for_model():
+                ollama_tools = []
+                for tool in tools:
+                    ollama_tools.append({
+                        "type": "function",
+                        "function": {
+                            "name": tool["name"],
+                            "description": tool.get("description", ""),
+                            "parameters": tool.get("parameters", {"type": "object", "properties": {}})
+                        }
+                    })
+                request_kwargs["tools"] = ollama_tools
+                # Note: Ollama streaming with tools may not return tool calls inline
+                # Tool calls typically come at the end of the stream
+                logger.debug("Streaming with tools enabled (tool calls may appear at stream end)")
+
             for chunk in client.chat(**request_kwargs):
                 if "message" in chunk and "content" in chunk["message"]:
                     yield chunk["message"]["content"]
@@ -403,6 +420,21 @@ class OllamaBackend(BaseLLMBackend):
                 "options": options,
                 "stream": True,
             }
+
+            # Add tools if provided and model supports them
+            if tools and self._supports_tools_for_model():
+                ollama_tools = []
+                for tool in tools:
+                    ollama_tools.append({
+                        "type": "function",
+                        "function": {
+                            "name": tool["name"],
+                            "description": tool.get("description", ""),
+                            "parameters": tool.get("parameters", {"type": "object", "properties": {}})
+                        }
+                    })
+                payload["tools"] = ollama_tools
+                logger.debug("HTTP streaming with tools enabled")
 
             req = urllib.request.Request(
                 f"{self.base_url}/api/chat",

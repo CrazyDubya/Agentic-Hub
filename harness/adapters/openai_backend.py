@@ -324,7 +324,26 @@ class OpenAIBackend(BaseLLMBackend):
         max_tokens: int = 4096,
         **kwargs
     ) -> Iterator[str]:
-        """Generate a streaming response."""
+        """
+        Generate a streaming response.
+
+        Respects the _use_responses_api setting:
+        - For Responses API models: uses responses.create with stream=True
+        - For Chat Completions models: uses chat.completions.create with stream=True
+        """
+        if self._use_responses_api:
+            yield from self._stream_responses_api(messages, tools, max_tokens, **kwargs)
+        else:
+            yield from self._stream_chat_completions(messages, tools, max_tokens, **kwargs)
+
+    def _stream_chat_completions(
+        self,
+        messages: List[Dict[str, Any]],
+        tools: Optional[List[Dict[str, Any]]] = None,
+        max_tokens: int = 4096,
+        **kwargs
+    ) -> Iterator[str]:
+        """Stream using Chat Completions API."""
         try:
             request_kwargs = {
                 "model": self.model,
@@ -340,7 +359,6 @@ class OpenAIBackend(BaseLLMBackend):
 
             request_kwargs.update(kwargs)
 
-            # Stream using Chat Completions (more reliable for streaming)
             stream = self.client.chat.completions.create(**request_kwargs)
 
             for chunk in stream:
@@ -348,8 +366,73 @@ class OpenAIBackend(BaseLLMBackend):
                     yield chunk.choices[0].delta.content
 
         except self._openai.APIError as e:
-            logger.error(f"OpenAI streaming error: {e}")
+            logger.error(f"OpenAI Chat Completions streaming error: {e}")
             raise RuntimeError(f"OpenAI streaming failed: {e}") from e
+
+    def _stream_responses_api(
+        self,
+        messages: List[Dict[str, Any]],
+        tools: Optional[List[Dict[str, Any]]] = None,
+        max_tokens: int = 4096,
+        **kwargs
+    ) -> Iterator[str]:
+        """
+        Stream using the Responses API.
+
+        The Responses API provides semantic streaming events for GPT-5 and O1 models.
+        """
+        try:
+            request_kwargs = {
+                "model": self.model,
+                "input": messages,
+                "max_output_tokens": max_tokens,
+                "temperature": self.temperature,
+                "stream": True,
+            }
+
+            # Add tools if provided
+            if tools:
+                openai_tools = []
+                for tool in tools:
+                    openai_tools.append({
+                        "type": "function",
+                        "name": tool["name"],
+                        "description": tool.get("description", ""),
+                        "parameters": tool.get("parameters", {"type": "object", "properties": {}})
+                    })
+                request_kwargs["tools"] = openai_tools
+
+            request_kwargs.update(kwargs)
+
+            # Stream using Responses API
+            stream = self.client.responses.create(**request_kwargs)
+
+            for event in stream:
+                # Handle different event types from Responses API
+                if hasattr(event, 'type'):
+                    if event.type == 'content.delta':
+                        if hasattr(event, 'delta') and hasattr(event.delta, 'text'):
+                            yield event.delta.text
+                    elif event.type == 'content.text.delta':
+                        if hasattr(event, 'text'):
+                            yield event.text
+                # Fallback for simpler response structure
+                elif hasattr(event, 'choices') and event.choices:
+                    delta = event.choices[0].delta
+                    if hasattr(delta, 'content') and delta.content:
+                        yield delta.content
+
+        except AttributeError:
+            # Responses API streaming not available, fall back to Chat Completions
+            logger.warning(
+                f"Responses API streaming not available for {self.model}, "
+                "falling back to Chat Completions"
+            )
+            self._use_responses_api = False
+            yield from self._stream_chat_completions(messages, tools, max_tokens, **kwargs)
+        except self._openai.APIError as e:
+            logger.error(f"OpenAI Responses API streaming error: {e}")
+            raise RuntimeError(f"OpenAI Responses API streaming failed: {e}") from e
 
     def count_tokens(self, text: str) -> int:
         """Count tokens using tiktoken."""
