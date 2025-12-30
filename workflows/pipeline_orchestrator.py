@@ -1,6 +1,14 @@
 """
-Universal Workflow Harness
-Supports n8n, LangChain, custom Python, and text configuration workflows
+Pipeline Orchestrator
+Supports n8n, LangChain, custom Python, and text configuration workflows.
+
+This module orchestrates workflow pipelines - sequential/parallel execution of
+different workflow engines. It operates at a different layer than the LLM Harness:
+
+- LLM Harness (harness/): Agent behavior orchestration - makes LLMs act as agents
+- Pipeline Orchestrator (this file): Workflow execution - chains execution engines
+
+See ARCHITECTURE.md for the full system design.
 """
 
 import json
