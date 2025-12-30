@@ -48,13 +48,19 @@ setup(
         ],
         "openai": [
             "openai>=1.0",
+            "tiktoken>=0.5",  # For token counting
         ],
         "anthropic": [
-            "anthropic>=0.20",
+            "anthropic>=0.40",  # Updated for Claude 4.x support
+        ],
+        "ollama": [
+            "ollama>=0.3",
         ],
         "all": [
             "openai>=1.0",
-            "anthropic>=0.20",
+            "anthropic>=0.40",
+            "ollama>=0.3",
+            "tiktoken>=0.5",
             "httpx>=0.25",
             "pyyaml>=6.0",
             "rich>=13.0",  # For better terminal output

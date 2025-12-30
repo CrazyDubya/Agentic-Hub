@@ -181,7 +181,27 @@ class LLMBackend(ABC):
 
 
 class MockLLMBackend(LLMBackend):
-    """Mock backend for testing"""
+    """
+    Mock backend for testing ONLY.
+
+    DEPRECATED: For actual LLM connections, use the real backends:
+
+        from harness.adapters import create_backend
+
+        # Anthropic (Claude 4.x)
+        backend = create_backend("anthropic", model="claude-sonnet-4-20250514")
+
+        # OpenAI (GPT-5, GPT-4o)
+        backend = create_backend("openai", model="gpt-4o")
+
+        # OpenRouter (400+ models)
+        backend = create_backend("openrouter", model="deepseek/deepseek-v3")
+
+        # Ollama (local models)
+        backend = create_backend("ollama", model="llama3.3:70b")
+
+    See harness/adapters/ for real implementations.
+    """
 
     def generate(
         self,
@@ -189,8 +209,15 @@ class MockLLMBackend(LLMBackend):
         tools: Optional[List[Dict[str, Any]]] = None,
         max_tokens: int = 4096
     ) -> Dict[str, Any]:
+        import warnings
+        warnings.warn(
+            "MockLLMBackend is for testing only. "
+            "Use harness.adapters.create_backend() for real LLM connections.",
+            DeprecationWarning,
+            stacklevel=2
+        )
         return {
-            "content": "I'll help you with that task.",
+            "content": "[MOCK] I'll help you with that task.",
             "tool_calls": []
         }
 

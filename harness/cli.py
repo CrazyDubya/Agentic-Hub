@@ -5,18 +5,23 @@ Universal LLM Agent Harness - Command Line Interface
 A comprehensive CLI for interacting with the harness, managing agents,
 and running tasks in various modes.
 
+Now with REAL LLM backends:
+    - Anthropic (Claude 4.x)
+    - OpenAI (GPT-5, GPT-4o)
+    - OpenRouter (400+ models)
+    - Ollama (local models)
+
 Usage:
-    harness interactive [--agent NAME] [--mode MODE]
-    harness run TASK [--agent NAME] [--autonomous]
+    harness interactive [--provider anthropic] [--model claude-sonnet-4-20250514]
+    harness run TASK [--provider openai] [--model gpt-4o]
     harness server [--port PORT]
-    harness agent create [--name NAME] [--capabilities CAPS]
-    harness agent list
-    harness skill list [--category CAT]
-    harness skill install SKILL_ID
-    harness sandbox list [--agent AGENT]
-    harness sandbox create [--name NAME] [--template TEMPLATE]
-    harness eval export [--format FORMAT] [--output PATH]
-    harness status
+    harness providers       # List available providers
+    harness models          # List recommended models
+
+Environment Variables:
+    ANTHROPIC_API_KEY   - For Anthropic/Claude
+    OPENAI_API_KEY      - For OpenAI/GPT
+    OPENROUTER_API_KEY  - For OpenRouter (access to 400+ models)
 """
 
 import argparse
@@ -45,6 +50,13 @@ from harness.evaluation import (
     QAGenerationSystem,
     create_evaluation_system,
     create_qa_system
+)
+from harness.adapters import (
+    create_backend,
+    create_backend_from_env,
+    list_available_providers,
+    list_recommended_models,
+    MODEL_REGISTRY,
 )
 
 
@@ -105,11 +117,12 @@ def print_agent_status(state: AgentState):
 class CLILLMBackend(LLMBackend):
     """
     CLI-based LLM backend that prompts user for responses.
-    Useful for testing and human-in-the-loop scenarios.
+    Used only for human-in-the-loop testing scenarios.
+    For actual LLM connections, use real backends from harness.adapters.
     """
 
-    def __init__(self, mock_mode: bool = False):
-        self.mock_mode = mock_mode
+    def __init__(self):
+        pass
 
     def generate(
         self,
@@ -117,12 +130,6 @@ class CLILLMBackend(LLMBackend):
         tools: Optional[List[Dict[str, Any]]] = None,
         max_tokens: int = 4096
     ) -> Dict[str, Any]:
-        if self.mock_mode:
-            return {
-                "content": "[Mock response - enable real LLM for actual responses]",
-                "tool_calls": []
-            }
-
         # Show context to user
         print(colorize("\n--- LLM Context ---", Colors.DIM))
         for msg in messages[-3:]:  # Show last 3 messages
@@ -160,6 +167,81 @@ class CLILLMBackend(LLMBackend):
         return 128000
 
 
+def _create_real_backend(
+    provider: Optional[str] = None,
+    model: Optional[str] = None,
+    api_key: Optional[str] = None
+) -> LLMBackend:
+    """
+    Create a real LLM backend.
+
+    If no provider specified, auto-detects from environment variables.
+    """
+    if provider:
+        return create_backend(provider, model=model, api_key=api_key)
+    else:
+        return create_backend_from_env()
+
+
+def print_providers():
+    """Print available providers and their status."""
+    print(colorize("\n🔌 Available LLM Providers:", Colors.BOLD))
+
+    availability = list_available_providers()
+
+    providers_info = [
+        ("anthropic", "ANTHROPIC_API_KEY", "Claude Opus 4.5, Sonnet 4.5, Haiku 4.5"),
+        ("openai", "OPENAI_API_KEY", "GPT-5, GPT-4o, O1"),
+        ("openrouter", "OPENROUTER_API_KEY", "400+ models via unified API"),
+        ("ollama", "(local)", "Llama 3.3, Mistral, Qwen, DeepSeek"),
+    ]
+
+    for provider, env_var, models in providers_info:
+        available = availability.get(provider, False)
+        has_key = os.environ.get(env_var.replace("(local)", "")) if env_var != "(local)" else True
+
+        if available and has_key:
+            status = colorize("✓ Ready", Colors.GREEN)
+        elif available:
+            status = colorize("○ Need API key", Colors.YELLOW)
+        else:
+            status = colorize("✗ Not installed", Colors.RED)
+
+        print(f"  {provider:12} {status:30} {models}")
+        if env_var != "(local)":
+            print(f"               Set: {env_var}")
+
+    print(colorize("\nInstall packages:", Colors.DIM))
+    print("  pip install anthropic  # For Anthropic")
+    print("  pip install openai     # For OpenAI/OpenRouter")
+    print("  # Ollama: https://ollama.ai")
+
+
+def print_models():
+    """Print recommended models."""
+    print(colorize("\n🤖 Recommended Models (December 2025):", Colors.BOLD))
+
+    categories = [
+        ("Best Overall", ["claude-opus-4-5-20251101", "gpt-5"]),
+        ("Best Value", ["claude-sonnet-4-5-20250929", "gpt-4o", "gemini-2.5-pro"]),
+        ("Fast & Cheap", ["claude-haiku-4-5-20251015", "gpt-4o-mini", "gemini-2.0-flash"]),
+        ("Budget King", ["deepseek-v3", "deepseek-r1"]),
+        ("Local/Free", ["llama3.3:70b", "qwen2.5:72b", "mistral:7b"]),
+    ]
+
+    for category, model_ids in categories:
+        print(colorize(f"\n  {category}:", Colors.CYAN))
+        for model_id in model_ids:
+            info = MODEL_REGISTRY.get(model_id)
+            if info:
+                price = ""
+                if info.input_price_per_m > 0:
+                    price = f"${info.input_price_per_m:.2f}/${info.output_price_per_m:.2f} per M"
+                else:
+                    price = "Free"
+                print(f"    • {info.name:30} {info.context_window//1000}k ctx  {price}")
+
+
 class HarnessCLI:
     """Main CLI handler"""
 
@@ -185,7 +267,8 @@ class HarnessCLI:
                 return json.load(f)
         return {
             "default_mode": "interactive",
-            "llm_backend": "cli",  # or "openai", "anthropic", etc.
+            "provider": None,  # Auto-detect from env
+            "model": None,     # Use provider default
             "base_path": str(self.base_path),
             "auto_evaluate": True,
             "history_file": str(self.base_path / "history")
@@ -196,12 +279,44 @@ class HarnessCLI:
         with open(self.config_path, "w") as f:
             json.dump(self.config, f, indent=2)
 
-    def initialize(self, mode: HarnessMode = HarnessMode.INTERACTIVE, mock: bool = False):
-        """Initialize the harness"""
+    def initialize(
+        self,
+        mode: HarnessMode = HarnessMode.INTERACTIVE,
+        provider: Optional[str] = None,
+        model: Optional[str] = None,
+        human_mode: bool = False
+    ):
+        """
+        Initialize the harness with a real LLM backend.
+
+        Args:
+            mode: Harness operation mode
+            provider: LLM provider (anthropic, openai, openrouter, ollama)
+            model: Model ID (provider-specific)
+            human_mode: If True, use human-in-the-loop CLI backend
+        """
         print(colorize("Initializing harness...", Colors.DIM))
 
-        # Create LLM backend based on config
-        llm_backend = CLILLMBackend(mock_mode=mock)
+        # Create LLM backend
+        if human_mode:
+            llm_backend = CLILLMBackend()
+            print(colorize("  Using: Human-in-the-loop mode", Colors.YELLOW))
+        else:
+            try:
+                # Use provided or config values
+                use_provider = provider or self.config.get("provider")
+                use_model = model or self.config.get("model")
+
+                llm_backend = _create_real_backend(
+                    provider=use_provider,
+                    model=use_model
+                )
+                print(colorize(f"  Using: {llm_backend}", Colors.GREEN))
+
+            except (ValueError, ImportError, ConnectionError) as e:
+                print(colorize(f"  Warning: {e}", Colors.YELLOW))
+                print(colorize("  Falling back to human-in-the-loop mode", Colors.YELLOW))
+                llm_backend = CLILLMBackend()
 
         # Initialize harness
         self.harness = UniversalLLMHarness(
@@ -665,34 +780,55 @@ Text Commands (for non-tool LLMs):
 def main():
     """Main entry point"""
     parser = argparse.ArgumentParser(
-        description="Universal LLM Agent Harness CLI",
+        description="Universal LLM Agent Harness CLI - Now with REAL LLM backends!",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s interactive                  # Start interactive mode
-  %(prog)s run "Analyze this code"      # Run a single task
-  %(prog)s server --port 8080           # Start API server
-  %(prog)s agent create --name MyAgent  # Create a named agent
-  %(prog)s skill list                   # List available skills
-  %(prog)s eval export --output data.jsonl  # Export training data
+  %(prog)s interactive                        # Auto-detect backend from env
+  %(prog)s interactive --provider anthropic   # Use Anthropic Claude
+  %(prog)s interactive --provider openai --model gpt-4o
+  %(prog)s interactive --provider ollama --model llama3.3:70b
+  %(prog)s run "Analyze this code" --provider openrouter --model deepseek/deepseek-v3
+  %(prog)s providers                          # List available providers
+  %(prog)s models                             # List recommended models
+
+Environment Variables:
+  ANTHROPIC_API_KEY   - For Anthropic/Claude models
+  OPENAI_API_KEY      - For OpenAI/GPT models
+  OPENROUTER_API_KEY  - For OpenRouter (400+ models)
         """
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Commands")
+
+    # Provider/model arguments shared across commands
+    def add_backend_args(p):
+        p.add_argument("--provider", "-p",
+                       choices=["anthropic", "openai", "openrouter", "ollama"],
+                       help="LLM provider (auto-detected from env if not specified)")
+        p.add_argument("--model", "-M", help="Model ID (uses provider default if not specified)")
+        p.add_argument("--human", action="store_true",
+                       help="Use human-in-the-loop mode (no LLM)")
+
+    # Providers command
+    subparsers.add_parser("providers", help="List available LLM providers")
+
+    # Models command
+    subparsers.add_parser("models", help="List recommended models")
 
     # Interactive mode
     interactive_parser = subparsers.add_parser("interactive", help="Start interactive mode")
     interactive_parser.add_argument("--agent", "-a", help="Agent ID to use")
     interactive_parser.add_argument("--mode", "-m", choices=["interactive", "autonomous", "supervised"],
                                     default="interactive", help="Harness mode")
-    interactive_parser.add_argument("--mock", action="store_true", help="Use mock LLM backend")
+    add_backend_args(interactive_parser)
 
     # Run task
     run_parser = subparsers.add_parser("run", help="Run a single task")
     run_parser.add_argument("task", help="Task to run")
     run_parser.add_argument("--agent", "-a", help="Agent ID to use")
     run_parser.add_argument("--autonomous", action="store_true", help="Run in autonomous mode")
-    run_parser.add_argument("--mock", action="store_true", help="Use mock LLM backend")
+    add_backend_args(run_parser)
 
     # Server mode
     server_parser = subparsers.add_parser("server", help="Start API server")
@@ -751,21 +887,37 @@ Examples:
     cli = HarnessCLI()
 
     # Handle commands
-    if args.command == "interactive":
+    if args.command == "providers":
+        print_providers()
+
+    elif args.command == "models":
+        print_models()
+
+    elif args.command == "interactive":
         mode = HarnessMode.AUTONOMOUS if args.mode == "autonomous" else HarnessMode.INTERACTIVE
-        cli.initialize(mode, mock=args.mock)
+        cli.initialize(
+            mode,
+            provider=args.provider,
+            model=args.model,
+            human_mode=args.human
+        )
         cli.interactive_mode(args.agent)
 
     elif args.command == "run":
         mode = HarnessMode.AUTONOMOUS if args.autonomous else HarnessMode.INTERACTIVE
-        cli.initialize(mode, mock=args.mock)
+        cli.initialize(
+            mode,
+            provider=args.provider,
+            model=args.model,
+            human_mode=args.human
+        )
         cli.run_task(args.task, args.agent, args.autonomous)
 
     elif args.command == "server":
         cli.server_mode(args.host, args.port)
 
     elif args.command == "agent":
-        cli.initialize(mock=True)
+        cli.initialize(human_mode=True)  # No LLM needed for agent management
         if args.agent_command == "create":
             cli.create_agent(args.name, args.capabilities)
         elif args.agent_command == "list":
@@ -774,7 +926,7 @@ Examples:
             agent_parser.print_help()
 
     elif args.command == "skill":
-        cli.initialize(mock=True)
+        cli.initialize(human_mode=True)
         if args.skill_command == "list":
             cli._list_skills(args.category)
         elif args.skill_command == "install":
@@ -784,7 +936,7 @@ Examples:
             skill_parser.print_help()
 
     elif args.command == "sandbox":
-        cli.initialize(mock=True)
+        cli.initialize(human_mode=True)
         cli.create_agent()  # Need an agent for sandbox ops
         if args.sandbox_command == "list":
             cli._list_sandboxes()
@@ -794,7 +946,7 @@ Examples:
             sandbox_parser.print_help()
 
     elif args.command == "eval":
-        cli.initialize(mock=True)
+        cli.initialize(human_mode=True)
         if args.eval_command == "status":
             cli._show_evaluation()
         elif args.eval_command == "export":
@@ -808,7 +960,7 @@ Examples:
             eval_parser.print_help()
 
     elif args.command == "status":
-        cli.initialize(mock=True)
+        cli.initialize(human_mode=True)
         print_banner()
         print_status(cli.harness)
 
